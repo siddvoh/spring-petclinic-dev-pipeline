@@ -1,0 +1,34 @@
+env:
+  contexts:
+    - name: petclinic
+      urls:
+        - http://petclinic-app:8080/
+
+jobs:
+  - type: spider
+    parameters:
+      context: petclinic
+      maxDuration: 60
+
+  - type: ajaxSpider
+    parameters:
+      context: petclinic
+      maxDuration: 60
+
+  - type: activeScan
+    parameters:
+      context: petclinic
+      maxRuleDurationInMins: 2
+      maxScanDurationInMins: 10
+
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: /zap/reports
+      reportFile: petclinic-zap-report.html
+
+# make sure the report file is readable by jenkins
+  - type: script
+    parameters:
+      inline:
+        - chmod -R a+r /zap/reports

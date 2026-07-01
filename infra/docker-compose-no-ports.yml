@@ -1,0 +1,13 @@
+services:
+  app:
+    ports: []
+  jenkins:
+    ports: []
+  sonarqube:
+    ports: []
+  prometheus:
+    ports: []
+  grafana:
+    ports: []
+  zap:
+    ports: []

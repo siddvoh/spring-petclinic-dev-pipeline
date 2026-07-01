@@ -1,0 +1,65 @@
+# syntax=docker/dockerfile:1
+# This dockerfile builds the zap bare release
+# Dockerfile downloaded from: https://github.com/zaproxy/zaproxy/blob/main/docker/Dockerfile-bare
+
+FROM --platform=linux/amd64 debian:bookworm-slim AS builder
+
+RUN apt-get update && apt-get install -q -y --fix-missing \
+	wget \
+	curl \
+	openjdk-17-jdk \
+	xmlstarlet \
+	unzip && \
+	rm -rf /var/lib/apt/lists/*
+
+WORKDIR /zap
+
+# Download and expand the latest stable release
+RUN wget -qO- https://raw.githubusercontent.com/zaproxy/zap-admin/master/ZapVersions.xml | xmlstarlet sel -t -v //url |grep -i Linux | wget --content-disposition -i - -O - | tar zxv && \
+	mv ZAP*/* . && \
+	rm -R ZAP*
+
+# Update add-ons
+RUN ./zap.sh -cmd -silent -addonupdate
+# Copy them to installation directory
+RUN cp /root/.ZAP/plugin/*.zap plugin/ || :
+
+FROM eclipse-temurin:17-jre-alpine AS final
+LABEL maintainer="psiinon@gmail.com"
+
+RUN apk add --no-cache bash curl 
+
+USER root
+
+WORKDIR /zap
+COPY --from=builder --link --chown=1000:1000 /zap .
+COPY --link --chown=1000:1000 policies /home/zap/.ZAP/policies/
+
+RUN echo "zap2docker-bare" > /zap/container
+
+RUN /usr/sbin/adduser -u 1000 -h /home/zap -s /bin/bash -D zap
+
+#Change to the zap user so things get done as the right person (apart from copy)
+USER zap
+
+ENV PATH=$JAVA_HOME/bin:/zap/:$PATH
+ENV ZAP_PATH=/zap/zap.sh
+ENV HOME=/home/zap/
+ENV ZAP_PORT=8090
+ENV IS_CONTAINERIZED=true
+
+HEALTHCHECK CMD curl --silent --output /dev/null --fail http://localhost:$ZAP_PORT/ || exit 1
+
+# Copy your automation config
+COPY policies/scan-config.yml /zap/scan-config.yml
+
+# make sure the config file is there
+RUN cat /zap/scan-config.yml
+
+# Ensure reports directory exists
+RUN mkdir -p /zap/reports
+
+# Make sure ZAP can write reports and Jenkins can read them
+RUN chmod -R a+rwx /zap/reports
+
+ENTRYPOINT ["zap.sh", "-cmd", "-autorun", "/zap/scan-config.yml"]
