@@ -24,10 +24,15 @@ services:
       - miniproject-net
 
   sonarqube:
-    image: sonarqube:community
+    build:
+      context: ./sonarqube
     container_name: sonarqube
     ports:
       - "9000:9000"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
     networks:
       - miniproject-net
 
@@ -76,3 +81,6 @@ volumes:
   jenkins_home:
   grafana_data:
   zap_reports:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:

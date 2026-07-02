@@ -16,6 +16,14 @@ pipeline {
             }
         }
 
+        stage("Run SonarQube Analysis") {
+            steps {
+                script {
+                    load 'groovy/sonar-analysis.groovy'
+                }
+            }
+        }
+
         ///////////////////////////////////
         // probably run other modules here?
         ///////////////////////////////////
