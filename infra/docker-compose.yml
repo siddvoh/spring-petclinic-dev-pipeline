@@ -20,6 +20,7 @@ services:
       - jenkins_home:/var/jenkins_home
       - zap_reports:/var/jenkins_home/workspace/pipeline/zap/reports
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./jenkins/ssh/vagrant_private_key:/run/secrets/vagrant_private_key:ro
     networks:
       - miniproject-net
 

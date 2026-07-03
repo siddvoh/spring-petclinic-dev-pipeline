@@ -3,10 +3,10 @@ FROM jenkins/jenkins:lts-jdk17
 USER root
 
 RUN apt-get update
-RUN apt-get install -y docker.io
-RUN apt-get install -y git
-RUN apt-get install -y curl
 RUN apt-get install -y ansible
+RUN apt-get install -y docker.io
+RUN apt-get install -y docker-compose
+RUN apt-get install -y git
 RUN apt-get install -y openssh-client
 
 USER jenkins

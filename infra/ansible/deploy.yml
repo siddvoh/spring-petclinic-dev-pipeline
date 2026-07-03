@@ -1,0 +1,50 @@
+---
+- name: Deploy Spring PetClinic
+  hosts: production
+  become: true
+
+  tasks:
+    - name: Install Java
+      ansible.builtin.apt:
+        name: openjdk-17-jre-headless
+        state: present
+        update_cache: true
+
+    - name: Create application directory
+      ansible.builtin.file:
+        path: /opt/petclinic
+        state: directory
+
+    - name: Copy application JAR
+      ansible.builtin.copy:
+        src: "{{ app_jar_path }}"
+        dest: /opt/petclinic/app.jar
+
+    - name: Install systemd service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/petclinic.service
+        content: |
+          [Unit]
+          Description=Spring PetClinic
+
+          [Service]
+          ExecStart=/usr/bin/java -jar /opt/petclinic/app.jar
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Start application service
+      ansible.builtin.systemd:
+        name: petclinic
+        enabled: true
+        state: restarted
+        daemon_reload: true
+
+    - name: Wait for PetClinic
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8080/
+      register: application_health
+      retries: 30
+      delay: 5
+      until: application_health.status == 200

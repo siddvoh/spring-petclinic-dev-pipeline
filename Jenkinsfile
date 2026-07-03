@@ -1,49 +1,23 @@
 pipeline {
     agent any
+
+    triggers {
+        pollSCM('H/2 * * * *')
+    }
+
     stages {
-        stage("Install Docker Compose") {
+        stage('Build and Test') {
             steps {
                 script {
-                    load 'groovy/install-docker-compose.groovy'
-                }
-            }
-        }
-        stage("Clone Repo") {
-            steps {
-                script {
-                    load 'groovy/clone-repo.groovy'
+                    load 'groovy/build-test.groovy'
                 }
             }
         }
 
-        stage("Run SonarQube Analysis") {
+        stage('Deploy') {
             steps {
                 script {
-                    load 'groovy/sonar-analysis.groovy'
-                }
-            }
-        }
-
-        ///////////////////////////////////
-        // probably run other modules here?
-        ///////////////////////////////////
-
-        stage("Run ZAP Scans") {
-            steps {
-                script {
-                    load 'groovy/zap-analysis.groovy'
-                }
-            }
-        }
-
-        ///////////////////////////////////
-        // probably deploy to production here?
-        ///////////////////////////////////
-
-        stage("Run ZAP Monitoring") { //maybe by ssh into production VM?
-            steps {
-                script {
-                    load 'groovy/zap-monitoring.groovy'
+                    load 'groovy/deploy.groovy'
                 }
             }
         }
