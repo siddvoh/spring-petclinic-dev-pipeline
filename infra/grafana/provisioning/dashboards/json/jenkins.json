@@ -1,0 +1,45 @@
+{
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [{ "expr": "jenkins_job_count_value", "refId": "A" }],
+      "title": "Jenkins Jobs",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "targets": [{ "expr": "jenkins_executor_count_value", "refId": "A" }],
+      "title": "Executors",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "targets": [{ "expr": "jenkins_queue_size_value", "refId": "A" }],
+      "title": "Build Queue",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 8 },
+      "id": 4,
+      "targets": [
+        { "expr": "jenkins_runs_success_total", "legendFormat": "Successful", "refId": "A" },
+        { "expr": "jenkins_runs_failure_total", "legendFormat": "Failed", "refId": "B" },
+        { "expr": "jenkins_runs_unstable_total", "legendFormat": "Unstable", "refId": "C" }
+      ],
+      "title": "Build Results",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Jenkins",
+  "uid": "jenkins"
+}

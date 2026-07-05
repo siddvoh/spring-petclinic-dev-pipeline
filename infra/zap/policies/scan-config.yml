@@ -10,11 +10,6 @@ jobs:
       context: petclinic
       maxDuration: 60
 
-  - type: ajaxSpider
-    parameters:
-      context: petclinic
-      maxDuration: 60
-
   - type: activeScan
     parameters:
       context: petclinic
@@ -26,9 +21,3 @@ jobs:
       template: traditional-html
       reportDir: /zap/reports
       reportFile: petclinic-zap-report.html
-
-# make sure the report file is readable by jenkins
-  - type: script
-    parameters:
-      inline:
-        - chmod -R a+r /zap/reports

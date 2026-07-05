@@ -16,9 +16,11 @@ services:
     user: root
     ports:
       - "8081:8080"
+    environment:
+      SONAR_TOKEN: ${SONAR_TOKEN}
     volumes:
       - jenkins_home:/var/jenkins_home
-      - zap_reports:/var/jenkins_home/workspace/pipeline/zap/reports
+      - zap_reports:/zap/reports
       - /var/run/docker.sock:/var/run/docker.sock
       - ./jenkins/ssh/vagrant_private_key:/run/secrets/vagrant_private_key:ro
     networks:
@@ -61,14 +63,9 @@ services:
   zap:
     build:
       context: ./zap/
-    #image: ghcr.io/zaproxy/zaproxy:stable
     container_name: zap
-    #command: zap.sh -daemon -host 0.0.0.0 -port 8090 -config api.disablekey=true
     volumes:
       - zap_reports:/zap/reports
-      #- type: bind
-      #  source: ./zap/reports
-      #  target: /zap/reports
     ports:
       - "8090:8090"
     networks:

@@ -17,5 +17,4 @@ if (jenkins.getItem('petclinic-pipeline') == null) {
     scm.branches = [new BranchSpec('*/main')]
     job.definition = new CpsScmFlowDefinition(scm, 'Jenkinsfile')
     job.save()
-    job.scheduleBuild2(0)
 }

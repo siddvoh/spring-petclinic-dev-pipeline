@@ -24,7 +24,7 @@ RUN ./zap.sh -cmd -silent -addonupdate
 # Copy them to installation directory
 RUN cp /root/.ZAP/plugin/*.zap plugin/ || :
 
-FROM eclipse-temurin:17-jre-alpine AS final
+FROM --platform=linux/amd64 eclipse-temurin:17-jre-alpine AS final
 LABEL maintainer="psiinon@gmail.com"
 
 RUN apk add --no-cache bash curl 
