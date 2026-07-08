@@ -11,7 +11,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.network "forwarded_port",
     guest: 8080,
-    host: 8082,
+    host: 8080,
     id: "petclinic",
     host_ip: "127.0.0.1"
 

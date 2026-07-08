@@ -184,7 +184,7 @@ try {
 
     if ($buildResult -ne 'SUCCESS') { throw "Jenkins build did not succeed (result: $buildResult)" }
 
-    if (-not (Wait-ForUrl 'http://127.0.0.1:8082/')) { throw "App endpoint did not become available" }
+    if (-not (Wait-ForUrl 'http://127.0.0.1:8080/')) { throw "App endpoint did not become available" }
     if (-not (Wait-ForUrl 'http://127.0.0.1:9101/metrics')) { throw "Node exporter endpoint did not become available" }
     if (-not (Wait-ForUrl 'http://127.0.0.1:9090/-/ready')) { throw "Prometheus endpoint did not become available" }
     if (-not (Wait-ForUrl 'http://127.0.0.1:3000/api/health')) { throw "Grafana endpoint did not become available" }

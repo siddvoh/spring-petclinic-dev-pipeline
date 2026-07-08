@@ -4,13 +4,13 @@
 # this plan performs NO attacks. It only spiders to discover content and lets the
 # passive scanner analyse the traffic, so it is safe to run against live prod.
 #
-# Target: the Vagrant production VM. Vagrantfile forwards guest 8080 -> host 8082,
+# Target: the Vagrant production VM. Vagrantfile forwards guest 8080 -> host 8080,
 # and host.docker.internal resolves to the host from inside the zap container.
 env:
   contexts:
     - name: petclinic-prod
       urls:
-        - http://host.docker.internal:8082/
+        - http://host.docker.internal:8080/
   parameters:
     failOnError: false
     progressToStdout: true

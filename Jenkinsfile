@@ -43,9 +43,13 @@ pipeline {
         always {
             publishHTML(target: [
                 reportDir: 'zap/reports',
-                reportFiles: 'petclinic-zap-report.html',
-                reportName: 'ZAP Security Report'
+                reportFiles: 'index.html',
+                reportName: 'ZAP Security Reports',
+                keepAll: true,
+                allowMissing: true,
+                alwaysLinkToLastBuild: true
             ])
+            archiveArtifacts artifacts: 'zap/reports/*.html', allowEmptyArchive: true
         }
     }
 }

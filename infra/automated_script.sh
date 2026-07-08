@@ -91,7 +91,7 @@ for attempt in {1..360}; do
 done
 
 test "${BUILD_RESULT}" = "SUCCESS"
-wait_for_url http://127.0.0.1:8082/
+wait_for_url http://127.0.0.1:8080/
 wait_for_url http://127.0.0.1:9090/-/ready
 wait_for_url http://127.0.0.1:3000/api/health
 docker exec jenkins test -f /zap/reports/petclinic-zap-report.html

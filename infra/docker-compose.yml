@@ -4,8 +4,7 @@ services:
       context: ..
       dockerfile: Dockerfile
     container_name: petclinic-app
-    # No host port needed for real traffic - users hit the 'edge' reverse proxy
-    # on 8080. 8888 is kept only for direct debugging of the app.
+    # 8888 is kept for direct debugging of the app container.
     ports:
       - "8888:8080"
     networks:
@@ -104,33 +103,15 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      # Internal proxy/API port. Real user traffic reaches ZAP via the 'edge'
-      # reverse proxy on 8080; 8091 is exposed only for direct API/proxy access.
+      # Internal proxy/API port for direct access to ZAP.
       - "8091:8090"
     networks:
       - miniproject-net
     restart: unless-stopped
 
-  # True reverse-proxy FRONT DOOR. Real users hit http://localhost:8080 and are
-  # transparently forwarded to the app THROUGH the ZAP proxy (passive scan) - no
-  # per-client proxy configuration required.
-  edge:
-    build:
-      context: ./nginx
-    container_name: edge
-    depends_on:
-      - zap-monitor
-      - app
-    ports:
-      - "8080:80"
-    networks:
-      - miniproject-net
-    restart: unless-stopped
-
   # Sidecar loop: every 30s it regenerates the passive-scan HTML report snapshot
-  # in the shared zap_reports volume from whatever REAL user traffic the ZAP proxy
-  # has observed (via the 'edge' front door on localhost:8080). It generates NO
-  # traffic of its own. Keeps the 30s cadence out of Jenkins so builds stay short.
+  # in the shared zap_reports volume from whatever traffic the ZAP proxy has
+  # observed. It generates NO traffic of its own.
   zap-reporter:
     image: curlimages/curl:latest
     container_name: zap-reporter
