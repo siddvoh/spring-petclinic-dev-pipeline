@@ -16,11 +16,11 @@
   "graphTooltip": 1,
   "id": null,
   "schemaVersion": 39,
-  "tags": ["spring-boot", "petclinic", "jvm", "micrometer"],
+  "tags": ["spring-boot", "petclinic", "jvm", "micrometer", "container", "ci"],
   "time": { "from": "now-1h", "to": "now" },
   "timezone": "",
-  "title": "Spring PetClinic - JVM & Application",
-  "uid": "petclinic-jvm",
+  "title": "Spring PetClinic - App Container (CI)",
+  "uid": "petclinic-app-container",
   "refresh": "30s",
   "templating": { "list": [] },
   "panels": [
@@ -49,7 +49,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "process_uptime_seconds{job=\"petclinic\"}"
+          "expr": "process_uptime_seconds{job=\"petclinic\",environment=\"ci\"}"
         }
       ]
     },
@@ -87,7 +87,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "process_cpu_usage{job=\"petclinic\"}"
+          "expr": "process_cpu_usage{job=\"petclinic\",environment=\"ci\"}"
         }
       ]
     },
@@ -125,7 +125,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "system_cpu_usage{job=\"petclinic\"}"
+          "expr": "system_cpu_usage{job=\"petclinic\",environment=\"ci\"}"
         }
       ]
     },
@@ -154,7 +154,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "jvm_threads_live_threads{job=\"petclinic\"}"
+          "expr": "jvm_threads_live_threads{job=\"petclinic\",environment=\"ci\"}"
         }
       ]
     },
@@ -192,7 +192,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_used_bytes{job=\"petclinic\", area=\"heap\"}) / sum(jvm_memory_max_bytes{job=\"petclinic\", area=\"heap\"})"
+          "expr": "sum(jvm_memory_used_bytes{job=\"petclinic\",environment=\"ci\", area=\"heap\"}) / sum(jvm_memory_max_bytes{job=\"petclinic\",environment=\"ci\", area=\"heap\"})"
         }
       ]
     },
@@ -217,19 +217,19 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_used_bytes{job=\"petclinic\", area=\"heap\"})",
+          "expr": "sum(jvm_memory_used_bytes{job=\"petclinic\",environment=\"ci\", area=\"heap\"})",
           "legendFormat": "heap used"
         },
         {
           "refId": "B",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_committed_bytes{job=\"petclinic\", area=\"heap\"})",
+          "expr": "sum(jvm_memory_committed_bytes{job=\"petclinic\",environment=\"ci\", area=\"heap\"})",
           "legendFormat": "heap committed"
         },
         {
           "refId": "C",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_used_bytes{job=\"petclinic\", area=\"nonheap\"})",
+          "expr": "sum(jvm_memory_used_bytes{job=\"petclinic\",environment=\"ci\", area=\"nonheap\"})",
           "legendFormat": "non-heap used"
         }
       ]
@@ -256,13 +256,13 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "process_cpu_usage{job=\"petclinic\"}",
+          "expr": "process_cpu_usage{job=\"petclinic\",environment=\"ci\"}",
           "legendFormat": "process"
         },
         {
           "refId": "B",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "system_cpu_usage{job=\"petclinic\"}",
+          "expr": "system_cpu_usage{job=\"petclinic\",environment=\"ci\"}",
           "legendFormat": "system"
         }
       ]
@@ -288,19 +288,19 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "jvm_threads_live_threads{job=\"petclinic\"}",
+          "expr": "jvm_threads_live_threads{job=\"petclinic\",environment=\"ci\"}",
           "legendFormat": "live"
         },
         {
           "refId": "B",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "jvm_threads_daemon_threads{job=\"petclinic\"}",
+          "expr": "jvm_threads_daemon_threads{job=\"petclinic\",environment=\"ci\"}",
           "legendFormat": "daemon"
         },
         {
           "refId": "C",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "jvm_threads_peak_threads{job=\"petclinic\"}",
+          "expr": "jvm_threads_peak_threads{job=\"petclinic\",environment=\"ci\"}",
           "legendFormat": "peak"
         }
       ]
@@ -326,7 +326,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (status) (rate(http_server_requests_seconds_count{job=\"petclinic\"}[1m]))",
+          "expr": "sum by (status) (rate(http_server_requests_seconds_count{job=\"petclinic\",environment=\"ci\"}[1m]))",
           "legendFormat": "HTTP {{status}}"
         }
       ]
@@ -352,13 +352,13 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(http_server_requests_seconds_sum{job=\"petclinic\"}[1m])) / sum(rate(http_server_requests_seconds_count{job=\"petclinic\"}[1m]))",
+          "expr": "sum(rate(http_server_requests_seconds_sum{job=\"petclinic\",environment=\"ci\"}[1m])) / sum(rate(http_server_requests_seconds_count{job=\"petclinic\",environment=\"ci\"}[1m]))",
           "legendFormat": "avg latency"
         },
         {
           "refId": "B",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "max(http_server_requests_seconds_max{job=\"petclinic\"})",
+          "expr": "max(http_server_requests_seconds_max{job=\"petclinic\",environment=\"ci\"})",
           "legendFormat": "max latency"
         }
       ]
@@ -389,13 +389,13 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(jvm_gc_pause_seconds_sum{job=\"petclinic\"}[1m]))",
+          "expr": "sum(rate(jvm_gc_pause_seconds_sum{job=\"petclinic\",environment=\"ci\"}[1m]))",
           "legendFormat": "gc time/s"
         },
         {
           "refId": "B",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(jvm_gc_memory_allocated_bytes_total{job=\"petclinic\"}[1m])",
+          "expr": "rate(jvm_gc_memory_allocated_bytes_total{job=\"petclinic\",environment=\"ci\"}[1m])",
           "legendFormat": "allocation rate"
         }
       ]
@@ -421,25 +421,25 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "hikaricp_connections_active{job=\"petclinic\"}",
+          "expr": "hikaricp_connections_active{job=\"petclinic\",environment=\"ci\"}",
           "legendFormat": "active"
         },
         {
           "refId": "B",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "hikaricp_connections_idle{job=\"petclinic\"}",
+          "expr": "hikaricp_connections_idle{job=\"petclinic\",environment=\"ci\"}",
           "legendFormat": "idle"
         },
         {
           "refId": "C",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "hikaricp_connections_pending{job=\"petclinic\"}",
+          "expr": "hikaricp_connections_pending{job=\"petclinic\",environment=\"ci\"}",
           "legendFormat": "pending"
         },
         {
           "refId": "D",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "hikaricp_connections_max{job=\"petclinic\"}",
+          "expr": "hikaricp_connections_max{job=\"petclinic\",environment=\"ci\"}",
           "legendFormat": "max"
         }
       ]
@@ -465,7 +465,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (level) (rate(logback_events_total{job=\"petclinic\"}[1m]))",
+          "expr": "sum by (level) (rate(logback_events_total{job=\"petclinic\",environment=\"ci\"}[1m]))",
           "legendFormat": "{{level}}"
         }
       ]

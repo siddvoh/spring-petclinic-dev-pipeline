@@ -2,8 +2,6 @@
   labels:
     environment: "ci"
 
-# we would need to re-do/add grafana dashboard panels
-# to be able to see both the VM and the CI targets separately
-#- targets: ["host.docker.internal:8080"]
-#  labels:
-#    environment: "production"
+- targets: ["host.docker.internal:8080"]
+  labels:
+    environment: "production"
