@@ -37,6 +37,14 @@ pipeline {
                 }
             }
         }
+
+        stage('Start Passive Monitoring') {
+            steps {
+                script {
+                    load 'groovy/start-monitoring.groovy'
+                }
+            }
+        }
     }
 
     post {
