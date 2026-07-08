@@ -39,10 +39,31 @@ function Wait-ForUrl {
 
 Push-Location $VmDirectory
 try {
-    # `vagrant reload` applies any Vagrantfile changes (e.g. new network adapters)
-    # to an already-running VM and brings it up if it is halted.
-    vagrant reload
-    if ($LASTEXITCODE -ne 0) { throw "vagrant reload failed" }
+    $vagrantfilePath = Join-Path $VmDirectory 'Vagrantfile'
+    $vagrantStateDirectory = Join-Path $VmDirectory '.vagrant'
+    $vagrantfileHashPath = Join-Path $vagrantStateDirectory 'vagrantfile.hash'
+
+    $currentVagrantfileHash = (Get-FileHash -Path $vagrantfilePath -Algorithm SHA256).Hash
+    $previousVagrantfileHash = $null
+    if (Test-Path $vagrantfileHashPath) {
+        $previousVagrantfileHash = (Get-Content -Path $vagrantfileHashPath -Raw).Trim()
+    }
+
+    if ((-not [string]::IsNullOrEmpty($previousVagrantfileHash)) -and ($previousVagrantfileHash -ne $currentVagrantfileHash)) {
+        # Reload only when Vagrantfile changed since the last successful run.
+        Write-Host 'Vagrantfile changed since last run; running vagrant reload...'
+        vagrant reload
+        if ($LASTEXITCODE -ne 0) { throw "vagrant reload failed" }
+    }
+    else {
+        # Up is enough when configuration is unchanged or this is the first run.
+        Write-Host 'Vagrantfile unchanged (or first run); running vagrant up...'
+        vagrant up
+        if ($LASTEXITCODE -ne 0) { throw "vagrant up failed" }
+    }
+
+    New-Item -ItemType Directory -Force -Path $vagrantStateDirectory | Out-Null
+    Set-Content -Path $vagrantfileHashPath -Value $currentVagrantfileHash -NoNewline
 
     $identityFile = $null
     foreach ($line in (vagrant ssh-config)) {
@@ -59,6 +80,16 @@ finally {
 
 New-Item -ItemType Directory -Force -Path $SshDirectory | Out-Null
 Copy-Item -Path $identityFile -Destination $SshKey -Force
+
+# VirtualBox NAT only routes return traffic to loopback-originated connections.
+# Docker containers connect via 192.168.65.x (Docker Desktop gateway), which
+# VirtualBox NAT cannot route back. A netsh portproxy creates a new connection
+# from 127.0.0.1 to 127.0.0.1:2222 so VirtualBox NAT sees a loopback source.
+# Requires running as Administrator.
+#netsh interface portproxy delete v4tov4 listenport=2223 listenaddress=0.0.0.0 2>$null | Out-Null
+#netsh interface portproxy add v4tov4 listenport=2223 listenaddress=0.0.0.0 connectport=2222 connectaddress=127.0.0.1
+#if ($LASTEXITCODE -ne 0) { throw "netsh portproxy setup failed - run automated_script.ps1 as Administrator" }
+#Write-Host 'Port proxy 0.0.0.0:2223 -> 127.0.0.1:2222 active.'
 
 Push-Location $InfraDirectory
 try {

@@ -4,22 +4,29 @@ def deploy() {
         # which OpenSSH rejects. Copy it to a private location with 600 permissions.
         install -m 600 /run/secrets/vagrant_private_key "${WORKSPACE}/.vagrant_private_key"
 
-        # Fail fast with a clear error if the VM is unreachable.
-        # Uses the VM's static host-only IP (192.168.56.10, port 22) which bypasses
-        # VirtualBox NAT entirely and is directly reachable from Docker containers.
-        if ! timeout 10 bash -lc '</dev/tcp/192.168.56.10/22' 2>/dev/null; then
-            echo "ERROR: Cannot reach 192.168.56.10:22 (VM host-only IP) from Jenkins container."
-            echo "Ensure the Vagrant VM is running with the private_network adapter active."
-            echo "If the VM was already up when the Vagrantfile was changed, run: vagrant reload"
+        # Prefer 2223 (portproxy, if configured), then fall back to direct 2222.
+        SSH_PORT=""
+        for p in 2223 2222; do
+            if timeout 10 bash -lc "</dev/tcp/host.docker.internal/${p}" 2>/dev/null; then
+                SSH_PORT="${p}"
+                break
+            fi
+        done
+
+        if [ -z "${SSH_PORT}" ]; then
+            echo "ERROR: Cannot reach host.docker.internal on SSH ports 2223 or 2222 from Jenkins container."
             exit 2
         fi
+
+        echo "Using SSH port ${SSH_PORT} for Ansible deploy"
 
         ANSIBLE_HOST_KEY_CHECKING=False \
         ansible-playbook \
             -i infra/ansible/inventory.ini \
             infra/ansible/deploy.yml \
             --extra-vars "app_jar_path=${WORKSPACE}/forked_code/target/spring-petclinic-4.0.0-SNAPSHOT.jar" \
-            --extra-vars "ansible_ssh_private_key_file=${WORKSPACE}/.vagrant_private_key"
+            --extra-vars "ansible_ssh_private_key_file=${WORKSPACE}/.vagrant_private_key" \
+            --extra-vars "ansible_port=${SSH_PORT}"
     '''
 
     def prometheusTarget = load 'groovy/prometheus-target.groovy'

@@ -1,6 +1,7 @@
 Vagrant.configure("2") do |config|
   config.vm.box = "bento/ubuntu-24.04"
   config.vm.hostname = "petclinic-prod"
+  config.vm.boot_timeout = 600
 
   config.vm.network "forwarded_port",
     guest: 22,
@@ -17,8 +18,4 @@ Vagrant.configure("2") do |config|
     host: 9101,
     id: "node_exporter"
 
-  # Static host-only IP so Ansible/SSH from Docker containers can reach the VM
-  # directly without going through VirtualBox NAT port-forwarding.
-  # VirtualBox creates a host-only adapter (vboxnet0/192.168.56.0/24) automatically.
-  config.vm.network "private_network", ip: "192.168.56.10"
 end

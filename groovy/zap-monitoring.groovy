@@ -16,24 +16,44 @@ def runZAPMonitoring() {
 
         mkdir -p zap/reports
 
-        # 192.168.56.10:22 — VM's static host-only IP, bypasses VirtualBox NAT.
-        SSH_OPTS="-p 22 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${WORKSPACE}/.vagrant_private_key"
+        # Prefer 2223 (portproxy, if configured), then fall back to direct 2222.
+        SSH_PORT=""
+        for p in 2223 2222; do
+            if timeout 10 bash -lc "</dev/tcp/host.docker.internal/${p}" 2>/dev/null; then
+                SSH_PORT="${p}"
+                break
+            fi
+        done
+
+        SSH_OPTS=""
+        if [ -n "${SSH_PORT}" ]; then
+            SSH_OPTS="-p ${SSH_PORT} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${WORKSPACE}/.vagrant_private_key"
+        else
+            echo "WARNING: SSH to host.docker.internal is unreachable on ports 2223 and 2222."
+            echo "WARNING: Skipping report copy from VM for this build."
+        fi
 
         # Pull the latest 50 timestamped reports plus latest-monitor.html.
-        ssh ${SSH_OPTS} vagrant@192.168.56.10 \
-            "ls -1t /opt/petclinic/zap-reports/monitor-*.html 2>/dev/null | head -n 50" \
-            > "${WORKSPACE}/.zap-report-list" || true
+        if [ -n "${SSH_OPTS}" ]; then
+            ssh ${SSH_OPTS} vagrant@host.docker.internal \
+                "ls -1t /opt/petclinic/zap-reports/monitor-*.html 2>/dev/null | head -n 50" \
+                > "${WORKSPACE}/.zap-report-list" || true
+        else
+            : > "${WORKSPACE}/.zap-report-list"
+        fi
 
         if [ -s "${WORKSPACE}/.zap-report-list" ]; then
             while IFS= read -r remote_file; do
                 [ -z "${remote_file}" ] && continue
-                scp ${SSH_OPTS} "vagrant@192.168.56.10:${remote_file}" zap/reports/
+                scp ${SSH_OPTS} "vagrant@host.docker.internal:${remote_file}" zap/reports/
             done < "${WORKSPACE}/.zap-report-list"
         fi
 
-        scp ${SSH_OPTS} \
-            vagrant@192.168.56.10:/opt/petclinic/zap-reports/latest-monitor.html \
-            zap/reports/latest-monitor.html || true
+        if [ -n "${SSH_OPTS}" ]; then
+            scp ${SSH_OPTS} \
+                vagrant@host.docker.internal:/opt/petclinic/zap-reports/latest-monitor.html \
+                zap/reports/latest-monitor.html || true
+        fi
 
         # Build an index page so publishHTML can expose multiple report files.
         {
