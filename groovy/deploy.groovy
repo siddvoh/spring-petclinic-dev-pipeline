@@ -1,10 +1,15 @@
 def deploy() {
     sh '''
+        # The mounted Docker secret is world-readable (0777 on Windows bind mounts),
+        # which OpenSSH rejects. Copy it to a private location with 600 permissions.
+        install -m 600 /run/secrets/vagrant_private_key "${WORKSPACE}/.vagrant_private_key"
+
         ANSIBLE_HOST_KEY_CHECKING=False \
         ansible-playbook \
             -i infra/ansible/inventory.ini \
             infra/ansible/deploy.yml \
-            --extra-vars "app_jar_path=${WORKSPACE}/forked_code/target/spring-petclinic-4.0.0-SNAPSHOT.jar"
+            --extra-vars "app_jar_path=${WORKSPACE}/forked_code/target/spring-petclinic-4.0.0-SNAPSHOT.jar" \
+            --extra-vars "ansible_ssh_private_key_file=${WORKSPACE}/.vagrant_private_key"
     '''
 }
 
