@@ -25,6 +25,8 @@ services:
       - zap_reports:/zap/reports
       - /var/run/docker.sock:/var/run/docker.sock
       - ./jenkins/ssh/vagrant_private_key:/run/secrets/vagrant_private_key:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - miniproject-net
 
