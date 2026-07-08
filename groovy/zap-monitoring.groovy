@@ -16,22 +16,23 @@ def runZAPMonitoring() {
 
         mkdir -p zap/reports
 
-        SSH_OPTS="-p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${WORKSPACE}/.vagrant_private_key"
+        # 192.168.56.10:22 — VM's static host-only IP, bypasses VirtualBox NAT.
+        SSH_OPTS="-p 22 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${WORKSPACE}/.vagrant_private_key"
 
         # Pull the latest 50 timestamped reports plus latest-monitor.html.
-        ssh ${SSH_OPTS} vagrant@host.docker.internal \
+        ssh ${SSH_OPTS} vagrant@192.168.56.10 \
             "ls -1t /opt/petclinic/zap-reports/monitor-*.html 2>/dev/null | head -n 50" \
             > "${WORKSPACE}/.zap-report-list" || true
 
         if [ -s "${WORKSPACE}/.zap-report-list" ]; then
             while IFS= read -r remote_file; do
                 [ -z "${remote_file}" ] && continue
-                scp ${SSH_OPTS} "vagrant@host.docker.internal:${remote_file}" zap/reports/
+                scp ${SSH_OPTS} "vagrant@192.168.56.10:${remote_file}" zap/reports/
             done < "${WORKSPACE}/.zap-report-list"
         fi
 
         scp ${SSH_OPTS} \
-            vagrant@host.docker.internal:/opt/petclinic/zap-reports/latest-monitor.html \
+            vagrant@192.168.56.10:/opt/petclinic/zap-reports/latest-monitor.html \
             zap/reports/latest-monitor.html || true
 
         # Build an index page so publishHTML can expose multiple report files.
