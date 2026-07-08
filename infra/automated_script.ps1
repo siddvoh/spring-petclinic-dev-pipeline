@@ -39,8 +39,10 @@ function Wait-ForUrl {
 
 Push-Location $VmDirectory
 try {
-    vagrant up
-    if ($LASTEXITCODE -ne 0) { throw "vagrant up failed" }
+    # `vagrant reload` applies any Vagrantfile changes (e.g. new network adapters)
+    # to an already-running VM and brings it up if it is halted.
+    vagrant reload
+    if ($LASTEXITCODE -ne 0) { throw "vagrant reload failed" }
 
     $identityFile = $null
     foreach ($line in (vagrant ssh-config)) {
