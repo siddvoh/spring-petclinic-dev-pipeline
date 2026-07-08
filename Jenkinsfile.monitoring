@@ -14,10 +14,9 @@ pipeline {
     }
 
     triggers {
-        // Jenkins cron granularity is 1 MINUTE - it cannot trigger every 30s.
-        // The report itself is regenerated every 30s by the VM's zap-reporter
+        // The report itself is regenerated every 300s by the VM's zap-reporter
         // service; each build fetches multiple recent snapshots and publishes them.
-        cron('* * * * *')
+        cron('H/15 * * * *')
     }
 
     stages {

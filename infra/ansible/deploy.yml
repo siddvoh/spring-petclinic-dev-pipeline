@@ -184,6 +184,7 @@
         state: directory
         mode: "0755"
 
+    # Reports will be generated every 300s (5min)
     - name: Install report generator script
       ansible.builtin.copy:
         dest: /opt/petclinic/zap-report.sh
@@ -204,7 +205,7 @@
               # Keep disk usage bounded on long-running hosts.
               ls -1t {{ report_prefix }}-*.html 2>/dev/null | tail -n +1001 | xargs -r rm -f
             fi
-            sleep 30
+            sleep 300
           done
 
     - name: Install report generator systemd service

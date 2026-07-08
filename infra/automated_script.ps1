@@ -1,9 +1,11 @@
-#!/usr/bin/env pwsh
+# pwsh
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# & "$PSScriptRoot/install.ps1"; if ($LASTEXITCODE -ne 0) { Write-Error "Failed to install prerequisites"; exit 1 }
+& "$PSScriptRoot/install.ps1"; if ($LASTEXITCODE -ne 0) { Write-Error "Failed to install prerequisites"; exit 1 }
+
+Write-Host "You may need to reboot if you are running on Windows, due to VirtualBox installation."
 
 $InfraDirectory = $PSScriptRoot
 $VmDirectory = Join-Path $InfraDirectory 'vm'

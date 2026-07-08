@@ -12,32 +12,70 @@ function Command-Exists {
     $null -ne (Get-Command $Command -ErrorAction SilentlyContinue)
 }
 
-# Check and install Git
-if (-not (Command-Exists "git")) {
-    Write-Host "Git is not installed. Installing Git..."
-    # Add installation command for Git here
-    winget install -e --id Git.Git
-} else {
-    Write-Host "Git is already installed."
+function Is-PackageInstalledWithWinget {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$PackageId
+    )
+
+    if (-not (Command-Exists 'winget')) {
+        return $false
+    }
+
+    $output = (& winget list --id $PackageId -e --accept-source-agreements 2>&1 | Out-String)
+    return ($output -notmatch 'No installed package found matching input criteria')
 }
 
-# Check and install Docker
-if (-not (Command-Exists "docker")) {
-    Write-Host "Docker is not installed. Installing Docker..."
-    # Add installation command for Docker here
-    winget install -e --id Docker.DockerDesktop
-} else {
-    Write-Host "Docker is already installed."
+function Install-WithWingetIfMissing {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$PackageId,
+        [Parameter(Mandatory = $true)]
+        [string]$DisplayName,
+        [scriptblock]$IsInstalledCheck
+    )
+
+    if (& $IsInstalledCheck) {
+        Write-Host "$DisplayName is already installed."
+        return
+    }
+
+    if (-not (Command-Exists 'winget')) {
+        throw "winget is not available, cannot install $DisplayName"
+    }
+
+    Write-Host "$DisplayName is not installed. Installing $DisplayName..."
+    & winget install -e --id $PackageId --accept-package-agreements --accept-source-agreements
+
+    if (-not (& $IsInstalledCheck)) {
+        throw "Failed to install $DisplayName"
+    }
+
+    Write-Host "$DisplayName is installed."
 }
 
-# Check and install VirtualBox
-if (-not (Command-Exists "vboxmanage")) {
-    Write-Host "VirtualBox is not installed. Installing VirtualBox..."
-    # Add installation command for VirtualBox here
-    winget install -e --id Oracle.VirtualBox
-} else {
-    Write-Host "VirtualBox is already installed."
+function Test-VirtualBoxInstalled {
+    if (Is-PackageInstalledWithWinget 'Oracle.VirtualBox') {
+        return $true
+    }
+
+    if (Command-Exists 'VBoxManage.exe') {
+        return $true
+    }
+
+    if (Command-Exists 'vboxmanage') {
+        return $true
+    }
+
+    $defaultPath = 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe'
+    return (Test-Path $defaultPath)
 }
+
+Install-WithWingetIfMissing -PackageId 'Git.Git' -DisplayName 'Git' -IsInstalledCheck { Command-Exists 'git' }
+
+Install-WithWingetIfMissing -PackageId 'Docker.DockerDesktop' -DisplayName 'Docker Desktop' -IsInstalledCheck { Command-Exists 'docker' }
+
+Install-WithWingetIfMissing -PackageId 'Oracle.VirtualBox' -DisplayName 'VirtualBox' -IsInstalledCheck { Test-VirtualBoxInstalled }
 
 # Check and install Vagrant
 if (-not (Command-Exists "vagrant")) {
@@ -51,3 +89,5 @@ if (-not (Command-Exists "vagrant")) {
 } else {
     Write-Host "Vagrant is already installed."
 }
+
+exit 0
