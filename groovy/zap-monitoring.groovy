@@ -14,7 +14,9 @@ def runZAPMonitoring() {
         # Copy it to a private location with 600 perms (same as deploy.groovy).
         install -m 600 /run/secrets/vagrant_private_key "${WORKSPACE}/.vagrant_private_key"
 
-        mkdir -p zap/reports
+        REPORT_CACHE_DIR="${WORKSPACE}/zap/report-cache"
+        REPORT_PUBLISH_DIR="${WORKSPACE}/zap/reports"
+        mkdir -p "${REPORT_CACHE_DIR}" "${REPORT_PUBLISH_DIR}"
 
         SSH_PORT="2222"
         SSH_OPTS="-p ${SSH_PORT} -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -i ${WORKSPACE}/.vagrant_private_key"
@@ -35,18 +37,36 @@ def runZAPMonitoring() {
             : > "${WORKSPACE}/.zap-report-list"
         fi
 
+        copied_new=0
+        skipped_existing=0
         if [ -s "${WORKSPACE}/.zap-report-list" ]; then
             while IFS= read -r remote_file; do
                 [ -z "${remote_file}" ] && continue
-                scp ${SCP_OPTS} "vagrant@host.docker.internal:${remote_file}" zap/reports/
+                base_name="$(basename "${remote_file}")"
+                local_target="${REPORT_CACHE_DIR}/${base_name}"
+                if [ -f "${local_target}" ]; then
+                    skipped_existing=$((skipped_existing + 1))
+                    continue
+                fi
+
+                if scp ${SCP_OPTS} "vagrant@host.docker.internal:${remote_file}" "${local_target}.tmp"; then
+                    mv "${local_target}.tmp" "${local_target}"
+                    chmod 0644 "${local_target}" || true
+                    copied_new=$((copied_new + 1))
+                else
+                    rm -f "${local_target}.tmp"
+                    echo "WARNING: Failed to copy ${remote_file}"
+                fi
             done < "${WORKSPACE}/.zap-report-list"
         fi
 
         if [ -n "${SCP_OPTS}" ]; then
             scp ${SCP_OPTS} \
                 vagrant@host.docker.internal:/opt/petclinic/zap-reports/latest-monitor.html \
-                zap/reports/latest-monitor.html || true
+                "${REPORT_CACHE_DIR}/latest-monitor.html" || true
         fi
+
+        cp -f "${REPORT_CACHE_DIR}"/*.html "${REPORT_PUBLISH_DIR}"/ 2>/dev/null || true
 
         # Build an index page so publishHTML can expose multiple report files.
         {
@@ -54,13 +74,14 @@ def runZAPMonitoring() {
             echo '<html><head><meta charset="utf-8"><title>ZAP Passive Monitoring Reports</title></head><body>'
             echo '<h1>ZAP Passive Monitoring Reports</h1>'
             echo '<p>Newest first. These are snapshots fetched from production VM.</p>'
+            echo "<p>This run: copied ${copied_new} new reports, skipped ${skipped_existing} existing reports.</p>"
             echo '<ul>'
-            if [ -f zap/reports/latest-monitor.html ]; then
+            if [ -f "${REPORT_PUBLISH_DIR}/latest-monitor.html" ]; then
                 echo '<li><a href="latest-monitor.html">latest-monitor.html</a></li>'
             fi
 
             found=0
-            for f in $(ls -1t zap/reports/monitor-*.html 2>/dev/null); do
+            for f in $(ls -1t "${REPORT_PUBLISH_DIR}"/monitor-*.html 2>/dev/null); do
                 if [ -f "${f}" ]; then
                     base="$(basename "${f}")"
                     echo "<li><a href=\"${base}\">${base}</a></li>"
@@ -68,13 +89,13 @@ def runZAPMonitoring() {
                 fi
             done
 
-            if [ "${found}" -eq 0 ] && [ ! -f zap/reports/latest-monitor.html ]; then
+            if [ "${found}" -eq 0 ] && [ ! -f "${REPORT_PUBLISH_DIR}/latest-monitor.html" ]; then
                 echo '<li>No passive monitoring reports found yet.</li>'
             fi
 
             echo '</ul>'
             echo '</body></html>'
-        } > zap/reports/index.html
+        } > "${REPORT_PUBLISH_DIR}/index.html"
     '''
 }
 

@@ -32,12 +32,12 @@ pipeline {
 
     post {
         always {
-            // keepAll retains each build's report index/history in Jenkins UI.
+            // Publish a job-level link that always opens the latest index page.
             publishHTML(target: [
                 reportDir: 'zap/reports',
                 reportFiles: 'index.html',
                 reportName: 'ZAP Passive Monitoring Report',
-                keepAll: true,
+                keepAll: false,
                 allowMissing: true,
                 alwaysLinkToLastBuild: true
             ])
