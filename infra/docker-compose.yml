@@ -110,15 +110,14 @@ services:
   # transparently forwarded to the app THROUGH the ZAP proxy (passive scan) - no
   # per-client proxy configuration required.
   edge:
-    image: nginx:alpine
+    build:
+      context: ./nginx
     container_name: edge
     depends_on:
       - zap-monitor
       - app
     ports:
       - "8080:80"
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - miniproject-net
     restart: unless-stopped
