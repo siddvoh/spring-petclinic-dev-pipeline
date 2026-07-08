@@ -83,6 +83,14 @@
       delay: 5
       until: application_health.status == 200
 
+    - name: Wait for PetClinic Prometheus metrics endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_port }}/actuator/prometheus"
+      register: application_metrics_health
+      retries: 60
+      delay: 5
+      until: application_metrics_health.status == 200
+
     # --- OWASP ZAP (native daemon, passive proxy) ---
     - name: Create ZAP install and data directories
       ansible.builtin.file:
