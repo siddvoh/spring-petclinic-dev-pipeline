@@ -6,7 +6,6 @@
   vars:
     app_port: 8081 # app listens internally; nginx owns the public 8080
     zap_port: 8090 # ZAP proxy/daemon, localhost only
-    zap_version: "2.15.0" # bump if the download URL 404s (see unarchive task)
     zap_home: /opt/zap
     zap_data: /opt/zap-home
     report_dir: /opt/petclinic/zap-reports
@@ -23,6 +22,7 @@
           - wget
           - tar
           - curl
+          - xmlstarlet
           - prometheus-node-exporter
         state: present
         update_cache: true
@@ -92,16 +92,19 @@
         - "{{ zap_home }}"
         - "{{ zap_data }}"
 
-    - name: Download and extract ZAP
-      ansible.builtin.unarchive:
-        # If this 404s, update zap_version to a current release from
-        # https://github.com/zaproxy/zaproxy/releases
-        src: "https://github.com/zaproxy/zaproxy/releases/download/v{{ zap_version }}/ZAP_{{ zap_version }}_Linux.tar.gz"
-        dest: "{{ zap_home }}"
-        remote_src: true
-        extra_opts:
-          - --strip-components=1
+    - name: Download and extract ZAP (Dockerfile release-resolution logic)
+      ansible.builtin.shell: |
+        wget -qO- https://raw.githubusercontent.com/zaproxy/zap-admin/master/ZapVersions.xml \
+          | xmlstarlet sel -t -v //url \
+          | grep -i Linux \
+          | wget --content-disposition -i - -O - \
+          | tar zxv
+        mv ZAP*/* .
+        rm -R ZAP*
+      args:
+        chdir: "{{ zap_home }}"
         creates: "{{ zap_home }}/zap.sh"
+        executable: /bin/bash
 
     - name: Install ZAP systemd service (daemon/proxy, passive scan only)
       ansible.builtin.copy:
