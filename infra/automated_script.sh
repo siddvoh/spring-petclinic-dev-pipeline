@@ -2,6 +2,8 @@
 
 set -e
 
+#./infra/install.sh || { echo "Failed to install prerequisites"; exit 1; }
+
 INFRA_DIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VM_DIRECTORY="${INFRA_DIRECTORY}/vm"
 SSH_DIRECTORY="${INFRA_DIRECTORY}/jenkins/ssh"

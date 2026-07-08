@@ -4,8 +4,10 @@ services:
       context: ..
       dockerfile: Dockerfile
     container_name: petclinic-app
+    # No host port needed for real traffic - users hit the 'edge' reverse proxy
+    # on 8080. 8888 is kept only for direct debugging of the app.
     ports:
-      - "8080:8080"
+      - "8888:8080"
     networks:
       - miniproject-net
 
@@ -68,6 +70,80 @@ services:
       - zap_reports:/zap/reports
     ports:
       - "8090:8090"
+    networks:
+      - miniproject-net
+
+  # --- Continuous passive monitoring (ZAP proxy daemon) ---
+  # Long-running ZAP in daemon/proxy mode. Any traffic routed through its proxy
+  # port is PASSIVELY scanned. It never launches attacks, so it is safe to keep
+  # running against the live production deployment.
+  zap-monitor:
+    build:
+      context: ./zap/
+    container_name: zap-monitor
+    entrypoint:
+      - zap.sh
+      - -daemon
+      - -host
+      - 0.0.0.0
+      - -port
+      - "8090"
+      - -config
+      - api.disablekey=true
+      - -config
+      - api.addrs.addr.name=.*
+      - -config
+      - api.addrs.addr.regex=true
+    volumes:
+      - zap_reports:/zap/reports
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      # Internal proxy/API port. Real user traffic reaches ZAP via the 'edge'
+      # reverse proxy on 8080; 8091 is exposed only for direct API/proxy access.
+      - "8091:8090"
+    networks:
+      - miniproject-net
+    restart: unless-stopped
+
+  # True reverse-proxy FRONT DOOR. Real users hit http://localhost:8080 and are
+  # transparently forwarded to the app THROUGH the ZAP proxy (passive scan) - no
+  # per-client proxy configuration required.
+  edge:
+    image: nginx:alpine
+    container_name: edge
+    depends_on:
+      - zap-monitor
+      - app
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - miniproject-net
+    restart: unless-stopped
+
+  # Sidecar loop: every 30s it regenerates the passive-scan HTML report snapshot
+  # in the shared zap_reports volume from whatever REAL user traffic the ZAP proxy
+  # has observed (via the 'edge' front door on localhost:8080). It generates NO
+  # traffic of its own. Keeps the 30s cadence out of Jenkins so builds stay short.
+  zap-reporter:
+    image: curlimages/curl:latest
+    container_name: zap-reporter
+    depends_on:
+      - zap-monitor
+    volumes:
+      - zap_reports:/zap/reports
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      # Wait for the ZAP proxy/API to come up.
+      until curl -s -o /dev/null http://zap-monitor:8090/; do sleep 2; done
+      while true; do
+        # Regenerate the report from real traffic the passive scanner has seen.
+        curl -s "http://zap-monitor:8090/OTHER/core/other/htmlreport/" -o /zap/reports/latest-monitor.html || true
+        sleep 30
+      done
+    restart: unless-stopped
     networks:
       - miniproject-net
 

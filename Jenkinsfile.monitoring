@@ -1,0 +1,46 @@
+// Dedicated pipeline for CONTINUOUS PASSIVE monitoring of production.
+//
+// The heavy lifting runs OUTSIDE this pipeline: a long-lived ZAP proxy daemon
+// (zap-monitor) passively scans traffic, and a sidecar (zap-reporter) rebuilds
+// the HTML report every 30s. Each build here just publishes the latest snapshot
+// and finishes quickly - the build never hangs waiting on monitoring.
+pipeline {
+    agent any
+
+    options {
+        // Keep monitoring builds from piling up forever (this job fires often).
+        buildDiscarder(logRotator(numToKeepStr: '30'))
+    }
+
+    triggers {
+        // Jenkins cron granularity is 1 MINUTE - it cannot trigger every 30s.
+        // The report itself is regenerated every 30s by the zap-reporter sidecar;
+        // each build simply publishes the most recent (<=30s old) snapshot.
+        cron('* * * * *')
+    }
+
+    stages {
+        stage('Publish ZAP Passive Monitor Report') {
+            steps {
+                script {
+                    load 'groovy/zap-monitoring.groovy'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // keepAll retains the report attached to every build for history.
+            publishHTML(target: [
+                reportDir: 'zap/reports',
+                reportFiles: 'latest-monitor.html',
+                reportName: 'ZAP Passive Monitoring Report',
+                keepAll: true,
+                allowMissing: true,
+                alwaysLinkToLastBuild: true
+            ])
+            archiveArtifacts artifacts: 'zap/reports/latest-monitor.html', allowEmptyArchive: true
+        }
+    }
+}

@@ -1,0 +1,35 @@
+# ZAP Automation plan for PASSIVE monitoring of the live production deployment.
+#
+# Unlike scan-config.yml (which runs an activeScan / attacks a throwaway build),
+# this plan performs NO attacks. It only spiders to discover content and lets the
+# passive scanner analyse the traffic, so it is safe to run against live prod.
+#
+# Target: the Vagrant production VM. Vagrantfile forwards guest 8080 -> host 8082,
+# and host.docker.internal resolves to the host from inside the zap container.
+env:
+  contexts:
+    - name: petclinic-prod
+      urls:
+        - http://host.docker.internal:8082/
+  parameters:
+    failOnError: false
+    progressToStdout: true
+
+jobs:
+  # Discover content so the passive scanner has traffic to analyse.
+  - type: spider
+    parameters:
+      context: petclinic-prod
+      maxDuration: 5
+
+  # Wait for the passive scanner to finish analysing everything the spider found.
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+
+  # Timestamped filename keeps a history of periodic monitoring reports.
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: /zap/reports
+      reportFile: "{{yyyy-MM-dd-HH-mm}}-petclinic-monitor"

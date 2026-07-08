@@ -18,3 +18,11 @@ if (jenkins.getItem('petclinic-pipeline') == null) {
     job.definition = new CpsScmFlowDefinition(scm, 'Jenkinsfile')
     job.save()
 }
+
+if (jenkins.getItem('petclinic-zap-monitoring') == null) {
+    def monitorJob = jenkins.createProject(WorkflowJob, 'petclinic-zap-monitoring')
+    def monitorScm = new GitSCM('https://github.com/siddvoh/spring-petclinic-dev-pipeline.git')
+    monitorScm.branches = [new BranchSpec('*/main')]
+    monitorJob.definition = new CpsScmFlowDefinition(monitorScm, 'Jenkinsfile.monitoring')
+    monitorJob.save()
+}
