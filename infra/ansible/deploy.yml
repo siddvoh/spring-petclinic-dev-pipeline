@@ -23,8 +23,24 @@
           - wget
           - tar
           - curl
+          - prometheus-node-exporter
         state: present
         update_cache: true
+
+    # --- VM host metrics exporter ---
+    - name: Start node exporter service
+      ansible.builtin.systemd:
+        name: prometheus-node-exporter
+        enabled: true
+        state: restarted
+
+    - name: Wait for node exporter metrics endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:9100/metrics"
+      register: node_exporter_health
+      retries: 30
+      delay: 2
+      until: node_exporter_health.status == 200
 
     # --- Application (listens internally on {{ app_port }}) ---
     - name: Create application directory

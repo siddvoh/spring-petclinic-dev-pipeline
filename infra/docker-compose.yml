@@ -48,6 +48,9 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/targets:/etc/prometheus/targets
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - miniproject-net
 

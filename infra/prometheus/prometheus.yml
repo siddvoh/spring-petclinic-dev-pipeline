@@ -8,8 +8,17 @@ scrape_configs:
 
   - job_name: "petclinic"
     metrics_path: /actuator/prometheus
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/petclinic-targets.yml
+        refresh_interval: 5s
+
+  - job_name: "petclinic_vm_node"
     static_configs:
-      - targets: ["app:8080"]
+      - targets: ["host.docker.internal:9101"]
+        labels:
+          environment: "production"
+          role: "vm_host"
 
   - job_name: "jenkins"
     metrics_path: /prometheus/

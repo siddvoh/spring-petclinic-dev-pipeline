@@ -11,6 +11,9 @@ def deploy() {
             --extra-vars "app_jar_path=${WORKSPACE}/forked_code/target/spring-petclinic-4.0.0-SNAPSHOT.jar" \
             --extra-vars "ansible_ssh_private_key_file=${WORKSPACE}/.vagrant_private_key"
     '''
+
+    def prometheusTarget = load 'groovy/prometheus-target.groovy'
+    prometheusTarget.setPrometheusTarget('host.docker.internal:8082', 'production')
 }
 
 return deploy()
