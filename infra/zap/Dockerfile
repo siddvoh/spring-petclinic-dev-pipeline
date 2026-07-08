@@ -53,9 +53,6 @@ HEALTHCHECK CMD curl --silent --output /dev/null --fail http://localhost:$ZAP_PO
 # Copy your automation config
 COPY policies/scan-config.yml /zap/scan-config.yml
 
-# Copy the passive monitoring automation plan (used by the scheduled monitoring job)
-COPY policies/monitor-config.yml /zap/monitor-config.yml
-
 # make sure the config file is there
 RUN cat /zap/scan-config.yml
 

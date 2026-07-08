@@ -1,15 +1,31 @@
 ---
-- name: Deploy Spring PetClinic
+- name: Deploy Spring PetClinic with inline ZAP passive monitoring
   hosts: production
   become: true
 
+  vars:
+    app_port: 8081 # app listens internally; nginx owns the public 8080
+    zap_port: 8090 # ZAP proxy/daemon, localhost only
+    zap_version: "2.15.0" # bump if the download URL 404s (see unarchive task)
+    zap_home: /opt/zap
+    zap_data: /opt/zap-home
+    report_dir: /opt/petclinic/zap-reports
+    report_file: /opt/petclinic/zap-reports/latest-monitor.html
+
   tasks:
-    - name: Install Java
+    # --- Prerequisites ---
+    - name: Install prerequisites (Java, nginx, tools)
       ansible.builtin.apt:
-        name: openjdk-17-jre-headless
+        name:
+          - openjdk-17-jre-headless
+          - nginx
+          - wget
+          - tar
+          - curl
         state: present
         update_cache: true
 
+    # --- Application (listens internally on {{ app_port }}) ---
     - name: Create application directory
       ansible.builtin.file:
         path: /opt/petclinic
@@ -20,15 +36,16 @@
         src: "{{ app_jar_path }}"
         dest: /opt/petclinic/app.jar
 
-    - name: Install systemd service
+    - name: Install app systemd service
       ansible.builtin.copy:
         dest: /etc/systemd/system/petclinic.service
         content: |
           [Unit]
           Description=Spring PetClinic
+          After=network.target
 
           [Service]
-          ExecStart=/usr/bin/java -jar /opt/petclinic/app.jar
+          ExecStart=/usr/bin/java -jar /opt/petclinic/app.jar --server.port={{ app_port }}
           Restart=on-failure
 
           [Install]
@@ -41,10 +58,156 @@
         state: restarted
         daemon_reload: true
 
-    - name: Wait for PetClinic
+    - name: Wait for PetClinic app
       ansible.builtin.uri:
-        url: http://127.0.0.1:8080/
+        url: "http://127.0.0.1:{{ app_port }}/"
       register: application_health
-      retries: 30
+      retries: 60
       delay: 5
       until: application_health.status == 200
+
+    # --- OWASP ZAP (native daemon, passive proxy) ---
+    - name: Create ZAP install and data directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - "{{ zap_home }}"
+        - "{{ zap_data }}"
+
+    - name: Download and extract ZAP
+      ansible.builtin.unarchive:
+        # If this 404s, update zap_version to a current release from
+        # https://github.com/zaproxy/zaproxy/releases
+        src: "https://github.com/zaproxy/zaproxy/releases/download/v{{ zap_version }}/ZAP_{{ zap_version }}_Linux.tar.gz"
+        dest: "{{ zap_home }}"
+        remote_src: true
+        extra_opts:
+          - --strip-components=1
+        creates: "{{ zap_home }}/zap.sh"
+
+    - name: Install ZAP systemd service (daemon/proxy, passive scan only)
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/zap.service
+        content: |
+          [Unit]
+          Description=OWASP ZAP passive monitoring proxy
+          After=network.target
+
+          [Service]
+          Environment=HOME={{ zap_data }}
+          ExecStart={{ zap_home }}/zap.sh -daemon -host 127.0.0.1 -port {{ zap_port }} -config api.disablekey=true -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Start ZAP service
+      ansible.builtin.systemd:
+        name: zap
+        enabled: true
+        state: restarted
+        daemon_reload: true
+
+    - name: Wait for ZAP API
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ zap_port }}/"
+        status_code: [200, 403]
+      register: zap_health
+      retries: 60
+      delay: 5
+      until: zap_health.status in [200, 403]
+
+    # --- nginx reverse proxy: public 8080 -> ZAP (passive scan) -> app ---
+    - name: Install nginx reverse-proxy config
+      ansible.builtin.copy:
+        dest: /etc/nginx/sites-available/petclinic
+        content: |
+          server {
+              listen 8080;
+              server_name _;
+
+              location / {
+                  # Route all traffic THROUGH ZAP so it is passively scanned.
+                  # ZAP forwards origin-form requests using the Host header, so we
+                  # point Host at the real backend (the app).
+                  proxy_pass http://127.0.0.1:{{ zap_port }};
+                  proxy_http_version 1.1;
+                  proxy_set_header Host 127.0.0.1:{{ app_port }};
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_redirect http://127.0.0.1:{{ app_port }}/ /;
+              }
+          }
+
+    - name: Enable petclinic nginx site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/petclinic
+        dest: /etc/nginx/sites-enabled/petclinic
+        state: link
+
+    - name: Remove default nginx site
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Restart nginx
+      ansible.builtin.systemd:
+        name: nginx
+        enabled: true
+        state: restarted
+
+    # --- Passive-scan report generator (every 30s) ---
+    - name: Create report directory
+      ansible.builtin.file:
+        path: "{{ report_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Install report generator script
+      ansible.builtin.copy:
+        dest: /opt/petclinic/zap-report.sh
+        mode: "0755"
+        content: |
+          #!/bin/bash
+          # Regenerate the passive-scan HTML report every 30s from whatever REAL
+          # traffic ZAP has observed. Atomic write so scp never sees a partial file.
+          while true; do
+            if curl -s "http://127.0.0.1:{{ zap_port }}/OTHER/core/other/htmlreport/" -o "{{ report_file }}.tmp"; then
+              mv "{{ report_file }}.tmp" "{{ report_file }}"
+              chmod 0644 "{{ report_file }}"
+            fi
+            sleep 30
+          done
+
+    - name: Install report generator systemd service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/zap-reporter.service
+        content: |
+          [Unit]
+          Description=ZAP passive-scan report generator
+          After=zap.service
+          Requires=zap.service
+
+          [Service]
+          ExecStart=/opt/petclinic/zap-report.sh
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Start report generator service
+      ansible.builtin.systemd:
+        name: zap-reporter
+        enabled: true
+        state: restarted
+        daemon_reload: true
+
+    # --- Verify the full front door: nginx -> ZAP -> app ---
+    - name: Wait for the monitored front door
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:8080/"
+      register: frontdoor_health
+      retries: 30
+      delay: 5
+      until: frontdoor_health.status == 200
