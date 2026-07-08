@@ -81,16 +81,6 @@ finally {
 New-Item -ItemType Directory -Force -Path $SshDirectory | Out-Null
 Copy-Item -Path $identityFile -Destination $SshKey -Force
 
-# VirtualBox NAT only routes return traffic to loopback-originated connections.
-# Docker containers connect via 192.168.65.x (Docker Desktop gateway), which
-# VirtualBox NAT cannot route back. A netsh portproxy creates a new connection
-# from 127.0.0.1 to 127.0.0.1:2222 so VirtualBox NAT sees a loopback source.
-# Requires running as Administrator.
-#netsh interface portproxy delete v4tov4 listenport=2223 listenaddress=0.0.0.0 2>$null | Out-Null
-#netsh interface portproxy add v4tov4 listenport=2223 listenaddress=0.0.0.0 connectport=2222 connectaddress=127.0.0.1
-#if ($LASTEXITCODE -ne 0) { throw "netsh portproxy setup failed - run automated_script.ps1 as Administrator" }
-#Write-Host 'Port proxy 0.0.0.0:2223 -> 127.0.0.1:2222 active.'
-
 Push-Location $InfraDirectory
 try {
     docker compose up -d sonarqube

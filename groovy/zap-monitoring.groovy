@@ -16,21 +16,12 @@ def runZAPMonitoring() {
 
         mkdir -p zap/reports
 
-        # Prefer 2223 (portproxy, if configured), then fall back to direct 2222.
-        SSH_PORT=""
-        for p in 2223 2222; do
-            if timeout 10 bash -lc "</dev/tcp/host.docker.internal/${p}" 2>/dev/null; then
-                SSH_PORT="${p}"
-                break
-            fi
-        done
-
-        SSH_OPTS=""
-        if [ -n "${SSH_PORT}" ]; then
-            SSH_OPTS="-p ${SSH_PORT} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${WORKSPACE}/.vagrant_private_key"
-        else
-            echo "WARNING: SSH to host.docker.internal is unreachable on ports 2223 and 2222."
+        SSH_PORT="2222"
+        SSH_OPTS="-p ${SSH_PORT} -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -i ${WORKSPACE}/.vagrant_private_key"
+        if ! timeout 20 ssh ${SSH_OPTS} vagrant@host.docker.internal 'exit 0' >/dev/null 2>&1; then
+            echo "WARNING: SSH handshake to host.docker.internal:${SSH_PORT} is unavailable."
             echo "WARNING: Skipping report copy from VM for this build."
+            SSH_OPTS=""
         fi
 
         # Pull the latest 50 timestamped reports plus latest-monitor.html.

@@ -4,17 +4,11 @@ def deploy() {
         # which OpenSSH rejects. Copy it to a private location with 600 permissions.
         install -m 600 /run/secrets/vagrant_private_key "${WORKSPACE}/.vagrant_private_key"
 
-        # Prefer 2223 (portproxy, if configured), then fall back to direct 2222.
-        SSH_PORT=""
-        for p in 2223 2222; do
-            if timeout 10 bash -lc "</dev/tcp/host.docker.internal/${p}" 2>/dev/null; then
-                SSH_PORT="${p}"
-                break
-            fi
-        done
+        SSH_PORT="2222"
+        SSH_OPTS="-p ${SSH_PORT} -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -i ${WORKSPACE}/.vagrant_private_key"
 
-        if [ -z "${SSH_PORT}" ]; then
-            echo "ERROR: Cannot reach host.docker.internal on SSH ports 2223 or 2222 from Jenkins container."
+        if ! timeout 20 ssh ${SSH_OPTS} vagrant@host.docker.internal 'exit 0' >/dev/null 2>&1; then
+            echo "ERROR: Cannot complete SSH handshake to host.docker.internal:${SSH_PORT} from Jenkins container."
             exit 2
         fi
 
@@ -29,8 +23,6 @@ def deploy() {
             --extra-vars "ansible_port=${SSH_PORT}"
     '''
 
-    def prometheusTarget = load 'groovy/prometheus-target.groovy'
-    prometheusTarget.setPrometheusTarget('host.docker.internal:8082', 'production')
 }
 
 return deploy()
