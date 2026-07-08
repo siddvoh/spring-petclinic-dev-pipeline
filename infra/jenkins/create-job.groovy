@@ -19,10 +19,16 @@ if (jenkins.getItem('petclinic-pipeline') == null) {
     job.save()
 }
 
-if (jenkins.getItem('petclinic-zap-monitoring') == null) {
-    def monitorJob = jenkins.createProject(WorkflowJob, 'petclinic-zap-monitoring')
+def monitorJob = jenkins.getItem('petclinic-zap-monitoring') as WorkflowJob
+if (monitorJob == null) {
+    monitorJob = jenkins.createProject(WorkflowJob, 'petclinic-zap-monitoring')
     def monitorScm = new GitSCM('https://github.com/siddvoh/spring-petclinic-dev-pipeline.git')
     monitorScm.branches = [new BranchSpec('*/main')]
     monitorJob.definition = new CpsScmFlowDefinition(monitorScm, 'Jenkinsfile.monitoring')
     monitorJob.save()
+}
+
+if (monitorJob.getLastBuild() == null) {
+    // Bootstrap the first run so Jenkinsfile cron triggers become active.
+    monitorJob.scheduleBuild2(0)
 }

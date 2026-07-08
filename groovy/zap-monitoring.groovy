@@ -18,10 +18,12 @@ def runZAPMonitoring() {
 
         SSH_PORT="2222"
         SSH_OPTS="-p ${SSH_PORT} -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -i ${WORKSPACE}/.vagrant_private_key"
+        SCP_OPTS="-P ${SSH_PORT} -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -i ${WORKSPACE}/.vagrant_private_key"
         if ! timeout 20 ssh ${SSH_OPTS} vagrant@host.docker.internal 'exit 0' >/dev/null 2>&1; then
             echo "WARNING: SSH handshake to host.docker.internal:${SSH_PORT} is unavailable."
             echo "WARNING: Skipping report copy from VM for this build."
             SSH_OPTS=""
+            SCP_OPTS=""
         fi
 
         # Pull the latest 50 timestamped reports plus latest-monitor.html.
@@ -36,12 +38,12 @@ def runZAPMonitoring() {
         if [ -s "${WORKSPACE}/.zap-report-list" ]; then
             while IFS= read -r remote_file; do
                 [ -z "${remote_file}" ] && continue
-                scp ${SSH_OPTS} "vagrant@host.docker.internal:${remote_file}" zap/reports/
+                scp ${SCP_OPTS} "vagrant@host.docker.internal:${remote_file}" zap/reports/
             done < "${WORKSPACE}/.zap-report-list"
         fi
 
-        if [ -n "${SSH_OPTS}" ]; then
-            scp ${SSH_OPTS} \
+        if [ -n "${SCP_OPTS}" ]; then
+            scp ${SCP_OPTS} \
                 vagrant@host.docker.internal:/opt/petclinic/zap-reports/latest-monitor.html \
                 zap/reports/latest-monitor.html || true
         fi
