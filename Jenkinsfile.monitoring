@@ -1,9 +1,10 @@
 // Dedicated pipeline for CONTINUOUS PASSIVE monitoring of production.
 //
-// The heavy lifting runs OUTSIDE this pipeline: a long-lived ZAP proxy daemon
-// (zap-monitor) passively scans traffic, and a sidecar (zap-reporter) rebuilds
-// the HTML report every 30s. Each build here just publishes the latest snapshot
-// and finishes quickly - the build never hangs waiting on monitoring.
+// The heavy lifting runs ON THE PRODUCTION VM (deployed by Ansible in the main
+// pipeline's Deploy stage): a native ZAP proxy daemon passively scans real
+// traffic (nginx front door -> ZAP -> app), and a systemd reporter rebuilds the
+// HTML report every 30s on the VM. Each build here fetches a RECENT SET of
+// timestamped snapshots over SSH, then publishes an index page with links.
 pipeline {
     agent any
 
@@ -14,8 +15,8 @@ pipeline {
 
     triggers {
         // Jenkins cron granularity is 1 MINUTE - it cannot trigger every 30s.
-        // The report itself is regenerated every 30s by the zap-reporter sidecar;
-        // each build simply publishes the most recent (<=30s old) snapshot.
+        // The report itself is regenerated every 30s by the VM's zap-reporter
+        // service; each build fetches multiple recent snapshots and publishes them.
         cron('* * * * *')
     }
 
@@ -31,16 +32,16 @@ pipeline {
 
     post {
         always {
-            // keepAll retains the report attached to every build for history.
+            // keepAll retains each build's report index/history in Jenkins UI.
             publishHTML(target: [
                 reportDir: 'zap/reports',
-                reportFiles: 'latest-monitor.html',
+                reportFiles: 'index.html',
                 reportName: 'ZAP Passive Monitoring Report',
                 keepAll: true,
                 allowMissing: true,
                 alwaysLinkToLastBuild: true
             ])
-            archiveArtifacts artifacts: 'zap/reports/latest-monitor.html', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'zap/reports/*.html', allowEmptyArchive: true
         }
     }
 }

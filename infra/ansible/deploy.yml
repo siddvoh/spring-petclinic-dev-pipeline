@@ -11,6 +11,7 @@
     zap_data: /opt/zap-home
     report_dir: /opt/petclinic/zap-reports
     report_file: /opt/petclinic/zap-reports/latest-monitor.html
+    report_prefix: /opt/petclinic/zap-reports/monitor
 
   tasks:
     # --- Prerequisites ---
@@ -170,12 +171,19 @@
         mode: "0755"
         content: |
           #!/bin/bash
-          # Regenerate the passive-scan HTML report every 30s from whatever REAL
-          # traffic ZAP has observed. Atomic write so scp never sees a partial file.
+          # Regenerate passive-scan HTML every 30s from REAL traffic only.
+          # Keep timestamped history files + a latest symlink copy for convenience.
           while true; do
-            if curl -s "http://127.0.0.1:{{ zap_port }}/OTHER/core/other/htmlreport/" -o "{{ report_file }}.tmp"; then
-              mv "{{ report_file }}.tmp" "{{ report_file }}"
+            ts=$(date -u +%Y%m%d-%H%M%S)
+            stamped="{{ report_prefix }}-${ts}.html"
+            if curl -s "http://127.0.0.1:{{ zap_port }}/OTHER/core/other/htmlreport/" -o "${stamped}.tmp"; then
+              mv "${stamped}.tmp" "${stamped}"
+              cp "${stamped}" "{{ report_file }}"
+              chmod 0644 "${stamped}"
               chmod 0644 "{{ report_file }}"
+
+              # Keep disk usage bounded on long-running hosts.
+              ls -1t {{ report_prefix }}-*.html 2>/dev/null | tail -n +1001 | xargs -r rm -f
             fi
             sleep 30
           done
