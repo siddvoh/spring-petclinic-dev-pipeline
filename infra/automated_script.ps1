@@ -41,31 +41,8 @@ function Wait-ForUrl {
 
 Push-Location $VmDirectory
 try {
-    $vagrantfilePath = Join-Path $VmDirectory 'Vagrantfile'
-    $vagrantStateDirectory = Join-Path $VmDirectory '.vagrant'
-    $vagrantfileHashPath = Join-Path $vagrantStateDirectory 'vagrantfile.hash'
-
-    $currentVagrantfileHash = (Get-FileHash -Path $vagrantfilePath -Algorithm SHA256).Hash
-    $previousVagrantfileHash = $null
-    if (Test-Path $vagrantfileHashPath) {
-        $previousVagrantfileHash = (Get-Content -Path $vagrantfileHashPath -Raw).Trim()
-    }
-
-    if ((-not [string]::IsNullOrEmpty($previousVagrantfileHash)) -and ($previousVagrantfileHash -ne $currentVagrantfileHash)) {
-        # Reload only when Vagrantfile changed since the last successful run.
-        Write-Host 'Vagrantfile changed since last run; running vagrant reload...'
-        vagrant reload
-        if ($LASTEXITCODE -ne 0) { throw "vagrant reload failed" }
-    }
-    else {
-        # Up is enough when configuration is unchanged or this is the first run.
-        Write-Host 'Vagrantfile unchanged (or first run); running vagrant up...'
-        vagrant up
-        if ($LASTEXITCODE -ne 0) { throw "vagrant up failed" }
-    }
-
-    New-Item -ItemType Directory -Force -Path $vagrantStateDirectory | Out-Null
-    Set-Content -Path $vagrantfileHashPath -Value $currentVagrantfileHash -NoNewline
+    vagrant up
+    if ($LASTEXITCODE -ne 0) { throw "vagrant up failed" }
 
     $identityFile = $null
     foreach ($line in (vagrant ssh-config)) {
