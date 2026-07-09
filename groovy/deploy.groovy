@@ -22,7 +22,8 @@ def deploy() {
             --extra-vars "ansible_ssh_private_key_file=${WORKSPACE}/.vagrant_private_key" \
             --extra-vars "ansible_port=${SSH_PORT}"
     '''
-
 }
 
-return deploy()
+retry(5) {
+    deploy()
+}
